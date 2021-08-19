@@ -10,20 +10,6 @@
  * License: 0.1.0
  * License URL: http://www.gnu.org/licenses/gpl-2.0.txt
  * text-domain: woo-payfast-onsite-payment
-
- *
- * Copyright: (c) 2021 Jono, Inc. (jono.muamba@gamil.com) and WooCommerce
- *
- * License: GNU General Public License v3.0
- * License URI: http://www.gnu.org/licenses/gpl-3.0.html
- *
- * @package   woo-payfast-onsite-payment
- * @author    Jono
- * @category  Admin
- * @copyright Copyright (c) 2015-2016, Jono, Inc. and WooCommerce
- * @license   http://www.gnu.org/licenses/gpl-3.0.html GNU General Public License v3.0
- *
- * This Woo Payfast Onsite payment forks the WooCommerce core "Cheque" payment gateway to create another Woo Payfast Onsite Payment method.
  */
  
 defined( 'ABSPATH' ) or exit;
