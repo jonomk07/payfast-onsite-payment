@@ -48,7 +48,7 @@ class WC_Payfast_OnSite_Payment_Utils {
 			curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, true );
 
 			// Standard settings
-			curl_setopt( $ch, CURLOPT_URL, self::PAYFAST_ENDPOINT_URL );
+			curl_setopt( $ch, CURLOPT_URL, PAYFAST_ENDPOINT_URL );
 			curl_setopt( $ch, CURLOPT_POST, true );
 			curl_setopt( $ch, CURLOPT_POSTFIELDS, $pfParamString );
 
@@ -59,7 +59,8 @@ class WC_Payfast_OnSite_Payment_Utils {
 			// Execute cURL
 			$response = curl_exec( $ch );
 			curl_close( $ch );
-			echo $response;
+
+			// echo $response;
 			$rsp = json_decode( $response, true );
 			if ( $rsp['uuid'] ) {
 				return $rsp['uuid'];

@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Woo Payfast Onsite payment for Woocommerce
  * Plugin URI: hhttps://jonomuamba.co.za/
- * Author Name: Jono Muamba
- * Author URI: https://jonomuamba.co.za/
+ * Author Name: Jono Muamba, Rodrigue Tussee
+ * Author URI: https://github.com/jonomk07/payfast-onsite-payment
  * Description: Payfast Onsite payment for WooCommerce allows you to make payment via  Credit & Cheque Cards, MasterCard & Visa Card.
 
  * Version: 1.0.0
@@ -33,6 +33,15 @@ function woo_payfast_onsite_payment_add_to_gateways( $gateways ) {
 	return $gateways;
 }
 add_filter( 'woocommerce_payment_gateways', 'woo_payfast_onsite_payment_add_to_gateways' );
+
+
+/**
+ * Add payfast onsite script
+ */
+function woo_payfast_onsite_payment_enqueue_script() {
+	wp_enqueue_script( 'woo_payfast_onsite_payment_script', 'https://www.payfast.co.za/onsite/engine.js' );
+}
+add_action( 'wp_enqueue_scripts', 'woo_payfast_onsite_payment_enqueue_script' );
 
 
 /**
@@ -68,10 +77,8 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'wc_offline_ga
 add_action( 'plugins_loaded', 'wc_payfast_onsite_payment_gateway_init', 11 );
 
 
-
-
 function wc_payfast_onsite_payment_gateway_init() {
-	require_once plugin_basename( 'includes/class-woocommerce-payfast-onsite-payment-gateway.php' );
+	require_once plugin_basename( 'includes/class-woocommerce-payfast-onsite-payment-utils.php' );
 	require_once plugin_basename( 'includes/class-woocommerce-payfast-onsite-payment-gateway.php' );
 	load_plugin_textdomain( 'woo-payfast-onsite-payment', false, trailingslashit( dirname( plugin_basename( __FILE__ ) ) ) );
 }
