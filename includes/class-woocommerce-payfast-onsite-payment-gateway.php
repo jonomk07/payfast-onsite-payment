@@ -45,7 +45,7 @@ class WC_Payfast_Onsite_Payment_Gateway extends WC_Payment_Gateway {
 
 		// Actions
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
-		// add_action( 'woocommerce_api_wc_gateway_' . $this->id, array( $this, 'check_itn_response' ) );
+		add_action( 'woocommerce_api_wc_payfast_onsite_payment_gateway', array( $this, 'check_itn_response' ) );
 		add_action( 'woocommerce_receipt_' . $this->id, array( $this, 'receipt_page' ) );
 		add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
 
@@ -165,18 +165,22 @@ class WC_Payfast_Onsite_Payment_Gateway extends WC_Payment_Gateway {
 
 		$identifier = WC_Payfast_OnSite_Payment_Utils::generatePaymentIdentifier( $payfast_param_string );
 
-		if ( $identifier !== null ) {
-			// Launch modal
-			return '<script type="text/javascript">
+		if ( $identifier === null ) {
+			 wc_add_notice( 'Error loading the payment form.', 'error' );
+			 return;
+		}
 
-			window.payfast_do_onsite_payment({
-				"uuid":"' . $identifier . '",
-				"return_url":"' . $this->data_to_send['return_url'] . '&payment-successful=1",
-				"cancel_url":"' . $this->data_to_send['cancel_url'] . '"
-			});
+		// Launch modal
+		return '<script type="text/javascript">
 
-			</script>';
-		};
+		window.payfast_do_onsite_payment({
+			"uuid":"' . $identifier . '",
+			"return_url":"' . $this->data_to_send['return_url'] . '&payment-successful=1",
+			"cancel_url":"' . $this->data_to_send['cancel_url'] . '",
+			"notify_url":"' . $this->data_to_send['notify_url'] . '"
+		});
+
+		</script>';
 
 	}
 
@@ -191,12 +195,6 @@ class WC_Payfast_Onsite_Payment_Gateway extends WC_Payment_Gateway {
 	 * Output for the order received page.
 	 */
 	public function thankyou_page( $order_id ) {
-
-		// update order status.
-		if ( isset( $_GET['payment-successful'] )
-			&& $_GET['payment-successful'] == 1 ) {
-			$this->_process_order( $order_id );
-		}
 
 		if ( $this->instructions ) {
 			echo wpautop( wptexturize( $this->instructions ) );
@@ -228,6 +226,53 @@ class WC_Payfast_Onsite_Payment_Gateway extends WC_Payment_Gateway {
 	public function receipt_page( $order ) {
 		echo '<p>' . __( 'Thank you for your order, please click the button below to pay with PayFast.', 'woo-payfast-onsite-payment' ) . '</p>';
 		echo $this->generate_payfast_form( $order );
+	}
+
+	/**
+	 * Check PayFast ITN response.
+	 *
+	 * @since 1.0.0
+	 */
+	public function check_itn_response() {
+		$this->handle_itn_request( stripslashes_deep( $_POST ) );
+
+		// Notify PayFast that information has been received
+		header( 'HTTP/1.0 200 OK' );
+		flush();
+	}
+
+	/**
+	 * Check PayFast ITN validity.
+	 *
+	 * @param array $data
+	 * @since 1.0.0
+	 */
+	public function handle_itn_request( $data ) {
+
+		$order_id       = absint( $data['custom_str3'] );
+		$order          = wc_get_order( $order_id );
+
+		if ( false === $data ) {
+			return false;
+		}
+
+		if ( floatval( $data['amount_gross'] ) != floatval( $order->get_total() ) ) {
+			return false;
+		}
+
+		$signature = md5( $this->_generate_parameter_string( $data, false, false ) ); // false not to sort data
+
+		// If signature different, return false
+		if ( ! WC_Payfast_OnSite_Payment_Utils::validate_signature( $data, $signature ) ) {
+			return false;
+		}
+
+		$status = strtolower( $data['payment_status'] );
+
+		if ( 'complete' === $status ) {
+			$this->_process_order( $order_id );
+		}
+
 	}
 
 
@@ -356,5 +401,50 @@ class WC_Payfast_Onsite_Payment_Gateway extends WC_Payment_Gateway {
 		}
 		return false;
 	}
+
+	/**
+	 * @since 1.0.0 introduced.
+	 * @param      $api_data
+	 * @param bool $sort_data_before_merge? default true.
+	 * @param bool $skip_empty_values Should key value pairs be ignored when generating signature?  Default true.
+	 *
+	 * @return string
+	 */
+	protected function _generate_parameter_string( $api_data, $sort_data_before_merge = true, $skip_empty_values = true ) {
+
+		// if sorting is required the passphrase should be added in before sort.
+		if ( ! empty( $this->pass_phrase ) && $sort_data_before_merge ) {
+			$api_data['passphrase'] = $this->pass_phrase;
+		}
+
+		if ( $sort_data_before_merge ) {
+			ksort( $api_data );
+		}
+
+		// concatenate the array key value pairs.
+		$parameter_string = '';
+		foreach ( $api_data as $key => $val ) {
+
+			if ( $skip_empty_values && empty( $val ) ) {
+				continue;
+			}
+
+			if ( 'signature' !== $key ) {
+				$val = urlencode( $val );
+				$parameter_string .= "$key=$val&";
+			}
+		}
+		// when not sorting passphrase should be added to the end before md5
+		if ( $sort_data_before_merge ) {
+			$parameter_string = rtrim( $parameter_string, '&' );
+		} elseif ( ! empty( $this->pass_phrase ) ) {
+			$parameter_string .= 'passphrase=' . urlencode( $this->pass_phrase );
+		} else {
+			$parameter_string = rtrim( $parameter_string, '&' );
+		}
+
+		return $parameter_string;
+	}
+
 
 }

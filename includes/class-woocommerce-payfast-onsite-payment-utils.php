@@ -5,11 +5,18 @@ define( 'PAYFAST_ENDPOINT_URL', 'https://www.payfast.co.za/onsite/process' );
 
 class WC_Payfast_OnSite_Payment_Utils {
 
+	/**
+	 * Generate a hash to be used for the transaction.
+	 * @param array $data
+	 * @param string|null $passPhrase
+	 * 
+	 * @return string
+	 */
 	public static function generateSignature( $data, $passPhrase = null ) {
 		// Create parameter string
 		$pfOutput = '';
 		foreach ( $data as $key => $val ) {
-			if ( $val !== '' ) {
+			if ( $val !== '' && $key !== 'signature' ) {
 				$pfOutput .= $key . '=' . urlencode( trim( $val ) ) . '&';
 			}
 		}
@@ -21,6 +28,11 @@ class WC_Payfast_OnSite_Payment_Utils {
 		return md5( $getString );
 	}
 
+	/**
+	 * Convert data array to query strings.
+	 * @param array $dataArray
+	 * @return string
+	 */
 	public static function dataToString( $dataArray ) {
 		// Create parameter string
 		$pfOutput = '';
@@ -33,6 +45,13 @@ class WC_Payfast_OnSite_Payment_Utils {
 		return substr( $pfOutput, 0, -1 );
 	}
 
+	/**
+	 * Generates a payment ID.
+	 * @param string $pfParamString
+	 * @param string|null $pfProxy
+	 * 
+	 * @return string
+	 */
 	public static function generatePaymentIdentifier( $pfParamString, $pfProxy = null ) {
 		// Use cURL (if available)
 		if ( in_array( 'curl', get_loaded_extensions(), true ) ) {
@@ -62,11 +81,23 @@ class WC_Payfast_OnSite_Payment_Utils {
 
 			// echo $response;
 			$rsp = json_decode( $response, true );
-			if ( $rsp['uuid'] ) {
+			if ( isset( $rsp['uuid'] ) ) {
 				return $rsp['uuid'];
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Validates signature.
+	 * @param array $data
+	 * @param string $signature
+	 * 
+	 * @return bool
+	 */
+	public static function validate_signature( $data, $signature ) {
+	    $result = $data['signature'] === $signature;
+	    return $result;
 	}
 
 }
